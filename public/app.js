@@ -18,6 +18,12 @@
 
 
 document.addEventListener('DOMContentLoaded', () => {
+    const logoutBtn = document.getElementById('logout-btn');
+    logoutBtn.addEventListener('click', async () => {
+        await fetch('/api/auth/logout', { method: 'POST' });
+        window.location.href = '/login.html';
+    });
+
     const ticketForm = document.getElementById('ticket-form');
     const ticketList = document.getElementById('ticket-list');
 

@@ -40,4 +40,25 @@ router.post('/', (req, res) => {
     res.status(201).json(sanitizedUser);
 });
 
+// PUT /api/users/:id - Update a user
+router.put('/:id', (req, res) => {
+    const userId = parseInt(req.params.id, 10);
+    const { username, role, departmentId, password } = req.body;
+
+    const user = users.find(u => u.id === userId);
+
+    if (!user) {
+        return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Update fields if they are provided
+    if (username) user.username = username;
+    if (role) user.role = role;
+    if (departmentId) user.departmentId = departmentId;
+    if (password) user.password = password; // Reset password. Again, hash in production.
+
+    const { password: __, ...sanitizedUser } = user;
+    res.json(sanitizedUser);
+});
+
 module.exports = router;

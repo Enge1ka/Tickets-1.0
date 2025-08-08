@@ -1,18 +1,33 @@
 const express = require('express');
 const router = express.Router();
-const { tickets, getNextTicketId } = require('../database');
+const { tickets, getNextTicketId, users, departments } = require('../database');
 const { isAuthenticated, hasRole } = require('../middleware/auth');
+
+// Helper function to enrich ticket data with user and department info
+const enrichTicket = (ticket) => {
+    const user = users.find(u => u.id === ticket.userId);
+    const department = departments.find(d => d.id === (user ? user.departmentId : null));
+    return {
+        ...ticket,
+        userName: user ? user.username : 'Unknown User',
+        departmentName: department ? department.name : 'Unknown Department'
+    };
+};
 
 // GET /api/tickets - Get tickets based on user role
 router.get('/', isAuthenticated, (req, res) => {
     const { role, id } = req.session.user;
 
+    let ticketsToReturn;
+
     if (role === 'admin' || role === 'tech') {
-        res.json(tickets); // Admins and techs see all tickets
+        ticketsToReturn = tickets; // Admins and techs see all tickets
     } else {
-        const userTickets = tickets.filter(t => t.userId === id);
-        res.json(userTickets); // Regular users see only their own tickets
+        ticketsToReturn = tickets.filter(t => t.userId === id); // Regular users see only their own tickets
     }
+
+    const enrichedTickets = ticketsToReturn.map(enrichTicket);
+    res.json(enrichedTickets);
 });
 
 // POST /api/tickets - Create a new ticket
