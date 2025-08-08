@@ -1,7 +1,28 @@
+// Check user session before doing anything else
+(async () => {
+    try {
+        const response = await fetch('/api/auth/session');
+        if (!response.ok) {
+            window.location.href = '/login.html'; // Not authenticated
+            return;
+        }
+        const user = await response.json();
+        // If a regular user lands on the admin page, redirect them to the user view
+        if (user.role === 'user') {
+            window.location.href = '/index.html';
+        }
+    } catch (error) {
+        window.location.href = '/login.html'; // Error checking session, redirect to login
+    }
+})();
+
+
 document.addEventListener('DOMContentLoaded', () => {
     // State
     let allTickets = [];
     let allRequisitions = [];
+    let allUsers = [];
+    let currentUser = {};
 
     // --- Element Selectors ---
     const statsOpenTickets = document.getElementById('stats-open-tickets');
@@ -12,6 +33,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const adminRequisitionList = document.getElementById('admin-requisition-list');
     const ticketSearch = document.getElementById('ticket-search');
     const ticketFilterStatus = document.getElementById('ticket-filter-status');
+    const userList = document.getElementById('user-list');
+    const createUserForm = document.getElementById('create-user-form');
+    const userErrorMessage = document.getElementById('user-error-message');
 
     const priorityColors = {
         'Low': 'success',
@@ -23,12 +47,18 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Data Fetching ---
     const fetchData = async () => {
         try {
-            const [ticketsRes, reqsRes] = await Promise.all([
+            const [sessionRes, ticketsRes, reqsRes, usersRes] = await Promise.all([
+                fetch('/api/auth/session'),
                 fetch('/api/tickets'),
-                fetch('/api/requisitions')
+                fetch('/api/requisitions'),
+                fetch('/api/users') // Admins will fetch this
             ]);
+            currentUser = await sessionRes.json();
             allTickets = await ticketsRes.json();
             allRequisitions = await reqsRes.json();
+            if (usersRes.ok) {
+                allUsers = await usersRes.json();
+            }
             renderAll();
         } catch (error) {
             console.error('Failed to fetch data:', error);
@@ -40,6 +70,26 @@ document.addEventListener('DOMContentLoaded', () => {
         renderStats();
         renderTickets();
         renderRequisitions();
+        if (currentUser.role === 'admin') {
+            renderUsers();
+        }
+    };
+
+    const buildStatusDropdown = (ticket) => {
+        const standardStatuses = ['Open', 'In Progress', 'Resolved'];
+        const techStatuses = ['Open', 'In Progress', 'Awaiting User Response', 'Awaiting Parts', 'Resolved'];
+
+        const statuses = (currentUser.role === 'tech') ? techStatuses : standardStatuses;
+
+        const options = statuses.map(status =>
+            `<option value="${status}" ${ticket.status === status ? 'selected' : ''}>${status}</option>`
+        ).join('');
+
+        return `
+            <select class="form-select form-select-sm mb-2" data-id="${ticket.id}" onchange="updateTicketStatus(this)">
+                ${options}
+            </select>
+        `;
     };
 
     const renderStats = () => {
@@ -74,11 +124,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         <span class="badge bg-${priorityColors[ticket.priority]}">${ticket.priority}</span>
                     </div>
                     <div class="col-md-4">
-                        <select class="form-select form-select-sm mb-2" data-id="${ticket.id}" onchange="updateTicketStatus(this)">
-                            <option value="Open" ${ticket.status === 'Open' ? 'selected' : ''}>Open</option>
-                            <option value="In Progress" ${ticket.status === 'In Progress' ? 'selected' : ''}>In Progress</option>
-                            <option value="Resolved" ${ticket.status === 'Resolved' ? 'selected' : ''}>Resolved</option>
-                        </select>
+                        ${buildStatusDropdown(ticket)}
                         <input type="text" class="form-control form-control-sm" value="${ticket.assignedTo || ''}" placeholder="Assign to..." onchange="updateTicketAssignment(this, ${ticket.id})">
                     </div>
                 </div>
@@ -160,9 +206,58 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
+    const renderUsers = () => {
+        if (!userList) return;
+        userList.innerHTML = '';
+        allUsers.forEach(user => {
+            const item = document.createElement('div');
+            item.className = 'list-group-item d-flex justify-content-between align-items-center';
+            item.innerHTML = `
+                <span>${user.username}</span>
+                <span class="badge bg-primary rounded-pill">${user.role}</span>
+            `;
+            userList.appendChild(item);
+        });
+    };
+
     // --- Event Listeners ---
     ticketSearch.addEventListener('input', renderTickets);
     ticketFilterStatus.addEventListener('change', renderTickets);
+
+    if (createUserForm) {
+        createUserForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            userErrorMessage.textContent = '';
+
+            const newUser = {
+                username: document.getElementById('new-username').value,
+                password: document.getElementById('new-password').value,
+                role: document.getElementById('new-role').value,
+            };
+
+            try {
+                const response = await fetch('/api/users', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(newUser)
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.message || 'Failed to create user');
+                }
+
+                const createdUser = await response.json();
+                allUsers.push(createdUser);
+                renderUsers();
+                createUserForm.reset();
+
+            } catch (error) {
+                userErrorMessage.textContent = error.message;
+                console.error('Failed to create user:', error);
+            }
+        });
+    }
 
     // --- Initial Load ---
     fetchData();

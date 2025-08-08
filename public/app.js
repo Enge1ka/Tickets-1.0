@@ -1,3 +1,22 @@
+// Check user session before doing anything else
+(async () => {
+    try {
+        const response = await fetch('/api/auth/session');
+        if (!response.ok) {
+            window.location.href = '/login.html'; // Not authenticated
+            return;
+        }
+        const user = await response.json();
+        // If an admin or tech lands on the user page, redirect them to the admin dashboard
+        if (user.role === 'admin' || user.role === 'tech') {
+            window.location.href = '/admin.html';
+        }
+    } catch (error) {
+        window.location.href = '/login.html'; // Error checking session, redirect to login
+    }
+})();
+
+
 document.addEventListener('DOMContentLoaded', () => {
     const ticketForm = document.getElementById('ticket-form');
     const ticketList = document.getElementById('ticket-list');

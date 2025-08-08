@@ -1,15 +1,24 @@
 const express = require('express');
 const router = express.Router();
 const { tickets, getNextTicketId } = require('../database');
+const { isAuthenticated, hasRole } = require('../middleware/auth');
 
-// GET /api/tickets - Get all tickets
-router.get('/', (req, res) => {
-    res.json(tickets);
+// GET /api/tickets - Get tickets based on user role
+router.get('/', isAuthenticated, (req, res) => {
+    const { role, id } = req.session.user;
+
+    if (role === 'admin' || role === 'tech') {
+        res.json(tickets); // Admins and techs see all tickets
+    } else {
+        const userTickets = tickets.filter(t => t.userId === id);
+        res.json(userTickets); // Regular users see only their own tickets
+    }
 });
 
 // POST /api/tickets - Create a new ticket
-router.post('/', (req, res) => {
+router.post('/', isAuthenticated, (req, res) => {
     const { title, description, category, priority } = req.body;
+    const { id: userId } = req.session.user;
 
     if (!title || !description || !category || !priority) {
         return res.status(400).json({ message: 'Missing required fields: title, description, category, priority' });
@@ -17,6 +26,7 @@ router.post('/', (req, res) => {
 
     const newTicket = {
         id: getNextTicketId(),
+        userId,
         title,
         description,
         category,
@@ -31,8 +41,8 @@ router.post('/', (req, res) => {
     res.status(201).json(newTicket);
 });
 
-// PUT /api/tickets/:id - Update a ticket (for admin)
-router.put('/:id', (req, res) => {
+// PUT /api/tickets/:id - Update a ticket (for admin/tech)
+router.put('/:id', hasRole(['admin', 'tech']), (req, res) => {
     const ticketId = parseInt(req.params.id, 10);
     const { status, priority, assignedTo } = req.body;
 

@@ -83,6 +83,39 @@
         <!-- Requisition Management -->
         <h2 class="mt-4">Manage Requisitions</h2>
         <div id="admin-requisition-list" class="list-group"></div>
+
+        <hr class="my-5">
+
+        <!-- User Management -->
+        <h2 class="mt-4">Manage Users</h2>
+        <div class="row">
+            <div class="col-md-8">
+                <div id="user-list" class="list-group"></div>
+            </div>
+            <div class="col-md-4">
+                <h4>Create New User</h4>
+                <form id="create-user-form">
+                    <div class="mb-3">
+                        <label for="new-username" class="form-label">Username</label>
+                        <input type="text" id="new-username" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="new-password" class="form-label">Password</label>
+                        <input type="password" id="new-password" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="new-role" class="form-label">Role</label>
+                        <select id="new-role" class="form-select" required>
+                            <option value="user">User</option>
+                            <option value="tech">Tech</option>
+                            <option value="admin">Admin</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Create User</button>
+                </form>
+                 <div id="user-error-message" class="mt-3 text-danger"></div>
+            </div>
+        </div>
     </div>
 
     <script src="admin.js"></script>

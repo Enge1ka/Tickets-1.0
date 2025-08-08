@@ -3,6 +3,10 @@ const router = express.Router();
 const PDFDocument = require('pdfkit');
 const { format } = require('fast-csv');
 const { tickets, requisitions } = require('../database');
+const { hasRole } = require('../middleware/auth');
+
+// Protect all routes in this file
+router.use(hasRole(['admin', 'tech']));
 
 // GET /api/reports/tickets/csv - Download tickets as CSV
 router.get('/tickets/csv', (req, res) => {
