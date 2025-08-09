@@ -14,16 +14,34 @@ const enrichTicket = (ticket) => {
     };
 };
 
-// GET /api/tickets - Get tickets based on user role
+// GET /api/tickets - Get ACTIVE tickets based on user role
 router.get('/', isAuthenticated, (req, res) => {
     const { role, id } = req.session.user;
+    const { closed: closedStatuses } = require('../database').ticketStatuses;
 
     let ticketsToReturn;
 
     if (role === 'admin' || role === 'tech') {
-        ticketsToReturn = tickets; // Admins and techs see all tickets
+        ticketsToReturn = tickets.filter(t => !closedStatuses.includes(t.status));
     } else {
-        ticketsToReturn = tickets.filter(t => t.userId === id); // Regular users see only their own tickets
+        ticketsToReturn = tickets.filter(t => t.userId === id && !closedStatuses.includes(t.status));
+    }
+
+    const enrichedTickets = ticketsToReturn.map(enrichTicket);
+    res.json(enrichedTickets);
+});
+
+// GET /api/tickets/archived - Get ARCHIVED tickets based on user role
+router.get('/archived', isAuthenticated, (req, res) => {
+    const { role, id } = req.session.user;
+    const { closed: closedStatuses } = require('../database').ticketStatuses;
+
+    let ticketsToReturn;
+
+    if (role === 'admin' || role === 'tech') {
+        ticketsToReturn = tickets.filter(t => closedStatuses.includes(t.status));
+    } else {
+        ticketsToReturn = tickets.filter(t => t.userId === id && closedStatuses.includes(t.status));
     }
 
     const enrichedTickets = ticketsToReturn.map(enrichTicket);

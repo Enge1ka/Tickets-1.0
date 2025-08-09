@@ -55,22 +55,29 @@ document.addEventListener('DOMContentLoaded', () => {
         filteredTickets.forEach(ticket => {
             const item = document.createElement('div');
             item.className = 'list-group-item';
-            // Note: The user's name and department are now included from the enriched API
             item.innerHTML = `
-                <h5>${ticket.title}</h5>
-                <p>${ticket.description}</p>
-                <small>Submitted by: ${ticket.userName} (${ticket.departmentName})</small>
-                <hr>
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <span class="badge bg-secondary">${ticket.category}</span>
-                        <span class="badge bg-primary">${ticket.priority}</span>
-                    </div>
+                <div class="d-flex w-100 justify-content-between">
+                    <h5 class="mb-1">${ticket.title}</h5>
+                    <small>Status: ${ticket.status}</small>
+                </div>
+                <div class="d-flex align-items-center justify-content-between mt-2">
+                     <button class="btn btn-sm btn-outline-primary" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-ticket-${ticket.id}">
+                        Show Details
+                    </button>
                     <div class="d-flex align-items-center">
                         <select class="form-select form-select-sm w-auto me-2" id="status-select-${ticket.id}">
                             ${buildStatusOptions(ticket.status)}
                         </select>
                         <button class="btn btn-sm btn-success" onclick="updateTicketStatus(${ticket.id})">Update</button>
+                    </div>
+                </div>
+                <div class="collapse mt-3" id="collapse-ticket-${ticket.id}">
+                    <div class="card card-body">
+                        <p><strong>Description:</strong> ${ticket.description}</p>
+                        <p class="mb-0"><strong>Submitted by:</strong> ${ticket.userName} (${ticket.departmentName})</p>
+                        <p class="mb-0"><strong>Category:</strong> ${ticket.category}</p>
+                        <p class="mb-0"><strong>Priority:</strong> ${ticket.priority}</p>
+                        <p class="mb-0"><strong>Assigned To:</strong> ${ticket.assignedTo || 'N/A'}</p>
                     </div>
                 </div>
             `;
@@ -83,23 +90,57 @@ document.addEventListener('DOMContentLoaded', () => {
         allRequisitions.forEach(req => {
             const item = document.createElement('div');
             item.className = 'list-group-item';
-            // In a real app, requisitions would also be enriched with user/dept info
+            const statuses = ['Pending', 'Approved', 'Declined', 'Fulfilled'];
+            const statusOptions = statuses.map(s => `<option value="${s}" ${s === req.status ? 'selected' : ''}>${s}</option>`).join('');
+
             item.innerHTML = `
-                <h5>${req.quantity} x ${req.itemRequested}</h5>
-                <small>Status: <span class="badge bg-info">${req.status}</span></small>
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h5>${req.quantity} x ${req.itemRequested}</h5>
+                        <p class="mb-0">Reason: ${req.reason}</p>
+                    </div>
+                    <div class="d-flex align-items-center">
+                        <select class="form-select form-select-sm w-auto me-2" id="req-status-select-${req.id}">
+                            ${statusOptions}
+                        </select>
+                        <button class="btn btn-sm btn-success" onclick="updateRequisitionStatus(${req.id})">Update</button>
+                    </div>
+                </div>
             `;
             requisitionList.appendChild(item);
         });
     };
 
     const buildStatusOptions = (currentStatus) => {
-        const standardStatuses = ['Open', 'In Progress', 'Resolved'];
-        const techStatuses = ['Open', 'In Progress', 'Awaiting User Response', 'Awaiting Parts', 'Resolved'];
+        const standardStatuses = ['Open', 'In Progress', 'Pending Confirmation', 'Resolved'];
+        const techStatuses = ['Open', 'In Progress', 'Awaiting User Response', 'Awaiting Parts', 'Pending Confirmation'];
         const statuses = (currentUser.role === 'tech') ? techStatuses : standardStatuses;
         return statuses.map(s => `<option value="${s}" ${s === currentStatus ? 'selected' : ''}>${s}</option>`).join('');
     };
 
     // --- Update Logic ---
+    window.updateRequisitionStatus = async (reqId) => {
+        const statusSelect = document.getElementById(`req-status-select-${reqId}`);
+        const newStatus = statusSelect.value;
+
+        try {
+            const response = await fetch(`/api/requisitions/${reqId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status: newStatus })
+            });
+            if (!response.ok) throw new Error('Failed to update requisition');
+
+            const requisition = allRequisitions.find(r => r.id === reqId);
+            requisition.status = newStatus;
+            renderRequisitions();
+
+        } catch (error) {
+            console.error('Update failed:', error);
+            alert('Failed to update status.');
+        }
+    };
+
     window.updateTicketStatus = async (ticketId) => {
         const statusSelect = document.getElementById(`status-select-${ticketId}`);
         const newStatus = statusSelect.value;

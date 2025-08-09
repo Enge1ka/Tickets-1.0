@@ -3,16 +3,34 @@ const router = express.Router();
 const { requisitions, getNextRequisitionId } = require('../database');
 const { isAuthenticated, hasRole } = require('../middleware/auth');
 
-// GET /api/requisitions - Get requisitions based on user role
+const closedStatuses = ['Fulfilled', 'Declined'];
+
+// GET /api/requisitions - Get ACTIVE requisitions based on user role
 router.get('/', isAuthenticated, (req, res) => {
     const { role, id } = req.session.user;
 
+    let requisitionsToReturn;
+
     if (role === 'admin' || role === 'tech') {
-        res.json(requisitions);
+        requisitionsToReturn = requisitions.filter(r => !closedStatuses.includes(r.status));
     } else {
-        const userRequisitions = requisitions.filter(r => r.userId === id);
-        res.json(userRequisitions);
+        requisitionsToReturn = requisitions.filter(r => r.userId === id && !closedStatuses.includes(r.status));
     }
+    res.json(requisitionsToReturn);
+});
+
+// GET /api/requisitions/archived - Get ARCHIVED requisitions based on user role
+router.get('/archived', isAuthenticated, (req, res) => {
+    const { role, id } = req.session.user;
+
+    let requisitionsToReturn;
+
+    if (role === 'admin' || role === 'tech') {
+        requisitionsToReturn = requisitions.filter(r => closedStatuses.includes(r.status));
+    } else {
+        requisitionsToReturn = requisitions.filter(r => r.userId === id && closedStatuses.includes(r.status));
+    }
+    res.json(requisitionsToReturn);
 });
 
 // POST /api/requisitions - Create a new requisition

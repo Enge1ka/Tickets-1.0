@@ -51,18 +51,40 @@
                 </form>
             </div>
 
-            <!-- Ticket List -->
+            <!-- Ticket and Requisition Display -->
             <div class="col-md-8">
-                <h2>My Tickets</h2>
-                <div id="ticket-list" class="list-group">
-                    <!-- Tickets will be dynamically inserted here -->
+                <!-- Tabs -->
+                <ul class="nav nav-tabs" id="user-tabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="active-tickets-tab" data-bs-toggle="tab" data-bs-target="#active-tickets-panel" type="button" role="tab">My Active Tickets</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="resolved-tickets-tab" data-bs-toggle="tab" data-bs-target="#resolved-tickets-panel" type="button" role="tab">My History</button>
+                    </li>
+                </ul>
+
+                <!-- Tab Content -->
+                <div class="tab-content" id="user-tabs-content">
+                    <!-- Active Tickets Panel -->
+                    <div class="tab-pane fade show active" id="active-tickets-panel" role="tabpanel">
+                        <div id="ticket-list" class="list-group mt-3"></div>
+                    </div>
+                    <!-- Resolved Tickets Panel -->
+                    <div class="tab-pane fade" id="resolved-tickets-panel" role="tabpanel">
+                         <div id="resolved-ticket-list" class="list-group mt-3"></div>
+                    </div>
+                </div>
+
+                <hr class="my-5">
+
+                <h2>My Requisitions</h2>
+                <div id="requisition-list" class="list-group">
+                    <!-- Requisitions will be dynamically inserted here -->
                 </div>
             </div>
         </div>
 
-        <hr class="my-5">
-
-        <div class="row">
+        <div class="row mt-5">
             <!-- Requisition Form -->
             <div class="col-md-4">
                 <h2>Submit a Requisition</h2>

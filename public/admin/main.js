@@ -30,7 +30,8 @@ const renderNavbar = (username) => {
         { href: 'dashboard.html', text: 'Dashboard' },
         { href: 'users.html', text: 'Users' },
         { href: 'settings.html', text: 'Settings' },
-        { href: 'reports.html', text: 'Reports' }
+        { href: 'reports.html', text: 'Reports' },
+        { href: 'archive.html', text: 'Archive' }
     ];
 
     const linksHtml = navLinks.map(link => `

@@ -32,4 +32,23 @@ router.post('/', (req, res) => {
     res.status(201).json(newDepartment);
 });
 
+// PUT /api/departments/:id - Update a department
+router.put('/:id', (req, res) => {
+    const departmentId = parseInt(req.params.id, 10);
+    const { name } = req.body;
+
+    if (!name) {
+        return res.status(400).json({ message: 'Missing required field: name' });
+    }
+
+    const department = departments.find(d => d.id === departmentId);
+
+    if (!department) {
+        return res.status(404).json({ message: 'Department not found' });
+    }
+
+    department.name = name;
+    res.json(department);
+});
+
 module.exports = router;

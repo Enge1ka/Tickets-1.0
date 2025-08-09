@@ -65,8 +65,15 @@ const getNextTicketId = () => nextTicketId++;
 const getNextRequisitionId = () => nextRequisitionId++;
 
 
+const ticketStatuses = {
+    standard: ['Open', 'In Progress', 'Resolved'],
+    tech: ['Open', 'In Progress', 'Awaiting User Response', 'Awaiting Parts', 'Pending Confirmation'],
+    closed: ['Resolved']
+};
+
 module.exports = {
     departments,
+    ticketStatuses,
     users,
     tickets,
     requisitions,
