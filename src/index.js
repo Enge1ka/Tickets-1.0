@@ -46,14 +46,18 @@ app.use('/api/users', userRoutes);
 const departmentRoutes = require('./api/departments');
 app.use('/api/departments', departmentRoutes);
 
-const backupRoutes = require('./api/backup');
-app.use('/api/backup', backupRoutes);
-
 // Simple route to confirm the server is running
 app.get('/api', (req, res) => {
   res.json({ message: 'Welcome to the Ticketing & Requisition API!' });
 });
 
-app.listen(PORT, () => {
-  console.log(`Server is running on http://localhost:${PORT}`);
+// Initialize the database, then start the server
+const { initializeDatabase } = require('./database');
+initializeDatabase().then(() => {
+    app.listen(PORT, () => {
+        console.log(`Server is running on http://localhost:${PORT}`);
+    });
+}).catch(err => {
+    console.error('Failed to initialize database:', err);
+    process.exit(1);
 });

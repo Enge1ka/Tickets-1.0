@@ -1,84 +1,84 @@
-// In-memory data store
+const sqlite3 = require('sqlite3');
+const { open } = require('sqlite');
 
-// Note: Passwords are in plaintext for this prototype. In a real application, they should be hashed.
-let departments = [
-    { id: 1, name: 'IT Support' },
-    { id: 2, name: 'Human Resources' },
-    { id: 3, name: 'Sales' }
-];
+// This function will open a connection to the database file.
+async function openDb() {
+    return open({
+        filename: './database.db',
+        driver: sqlite3.Database
+    });
+}
 
-let users = [
-    { id: 1, username: 'admin', password: 'password', role: 'admin', departmentId: 1 },
-    { id: 2, username: 'tech', password: 'password', role: 'tech', departmentId: 1 },
-    { id: 3, username: 'user', password: 'password', role: 'user', departmentId: 2 }
-];
+// This function initializes the database, creating tables and seeding initial data.
+async function initializeDatabase() {
+    const db = await openDb();
 
-let tickets = [
-    {
-        id: 1,
-        userId: 3, // Created by 'user'
-        title: 'Email client not working',
-        description: 'Outlook is showing a "Cannot connect to server" error since this morning.',
-        category: 'Software Issue',
-        priority: 'High',
-        status: 'Open',
-        dateCreated: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(), // 2 days ago
-        lastUpdated: new Date().toISOString(),
-        assignedTo: 'tech'
-    },
-    {
-        id: 2,
-        userId: 3, // Created by 'user'
-        title: 'Cannot print documents',
-        description: 'The main office printer on the 2nd floor is not responding.',
-        category: 'Hardware Issue',
-        priority: 'Medium',
-        status: 'In Progress',
-        dateCreated: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(), // 1 day ago
-        lastUpdated: new Date().toISOString(),
-        assignedTo: 'tech'
-    }
-];
+    // Use serialize to ensure statements run in order
+    await db.serialize(async () => {
+        // Create tables if they don't exist
+        await db.exec(`
+            CREATE TABLE IF NOT EXISTS departments (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL UNIQUE
+            );
+        `);
 
-let requisitions = [
-    {
-        id: 1,
-        userId: 3, // Created by 'user'
-        itemRequested: 'Ergonomic Keyboard',
-        quantity: 1,
-        reason: 'Current keyboard is causing wrist strain.',
-        urgencyLevel: 'Medium',
-        status: 'Pending',
-        dateCreated: new Date().toISOString()
-    }
-];
+        await db.exec(`
+            CREATE TABLE IF NOT EXISTS users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                username TEXT NOT NULL UNIQUE,
+                password TEXT NOT NULL,
+                role TEXT NOT NULL CHECK(role IN ('admin', 'tech', 'user')),
+                departmentId INTEGER,
+                FOREIGN KEY (departmentId) REFERENCES departments (id)
+            );
+        `);
 
-// ID Counters
-let nextDepartmentId = departments.length + 1;
-let nextUserId = users.length + 1;
-let nextTicketId = tickets.length + 1;
-let nextRequisitionId = requisitions.length + 1;
+        await db.exec(`
+            CREATE TABLE IF NOT EXISTS tickets (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                title TEXT NOT NULL,
+                description TEXT NOT NULL,
+                category TEXT NOT NULL,
+                priority TEXT NOT NULL,
+                status TEXT NOT NULL,
+                dateCreated TEXT NOT NULL,
+                lastUpdated TEXT NOT NULL,
+                assignedTo TEXT,
+                userId INTEGER,
+                FOREIGN KEY (userId) REFERENCES users (id)
+            );
+        `);
 
-const getNextDepartmentId = () => nextDepartmentId++;
-const getNextUserId = () => nextUserId++;
-const getNextTicketId = () => nextTicketId++;
-const getNextRequisitionId = () => nextRequisitionId++;
+        await db.exec(`
+            CREATE TABLE IF NOT EXISTS requisitions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                itemRequested TEXT NOT NULL,
+                quantity INTEGER NOT NULL,
+                reason TEXT NOT NULL,
+                urgencyLevel TEXT NOT NULL,
+                status TEXT NOT NULL,
+                dateCreated TEXT NOT NULL,
+                userId INTEGER,
+                FOREIGN KEY (userId) REFERENCES users (id)
+            );
+        `);
 
+        // Seed initial data if tables are empty
+        const depts = await db.get('SELECT COUNT(id) as count FROM departments');
+        if (depts.count === 0) {
+            await db.run("INSERT INTO departments (name) VALUES ('IT Support'), ('Human Resources'), ('Sales')");
+        }
 
-const ticketStatuses = {
-    standard: ['Open', 'In Progress', 'Resolved'],
-    tech: ['Open', 'In Progress', 'Awaiting User Response', 'Awaiting Parts', 'Pending Confirmation'],
-    closed: ['Resolved']
-};
+        const users = await db.get('SELECT COUNT(id) as count FROM users');
+        if (users.count === 0) {
+            // Note: Passwords are in plaintext. In a real app, they should be hashed.
+            await db.run("INSERT INTO users (username, password, role, departmentId) VALUES ('admin', 'password', 'admin', 1), ('tech', 'password', 'tech', 1), ('user', 'password', 'user', 2)");
+        }
+    });
 
-module.exports = {
-    departments,
-    ticketStatuses,
-    users,
-    tickets,
-    requisitions,
-    getNextDepartmentId,
-    getNextUserId,
-    getNextTicketId,
-    getNextRequisitionId
-};
+    console.log('Database initialized successfully.');
+    // db.close(); // We might want to keep the connection open or manage it differently
+}
+
+module.exports = { openDb, initializeDatabase };

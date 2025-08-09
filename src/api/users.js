@@ -1,64 +1,76 @@
 const express = require('express');
 const router = express.Router();
-const { users, getNextUserId } = require('../database');
+const { openDb } = require('../database');
 const { hasRole } = require('../middleware/auth');
 
 // Protect all routes in this file - only admins can manage users
 router.use(hasRole(['admin']));
 
 // GET /api/users - Get all users
-router.get('/', (req, res) => {
-    // Return users without their passwords for security
-    const sanitizedUsers = users.map(({ password, ...user }) => user);
-    res.json(sanitizedUsers);
+router.get('/', async (req, res) => {
+    try {
+        const db = await openDb();
+        // Omit password from the result set for security
+        const users = await db.all('SELECT id, username, role, departmentId FROM users ORDER BY username');
+        res.json(users);
+    } catch (err) {
+        res.status(500).json({ message: 'Failed to retrieve users.' });
+    }
 });
 
 // POST /api/users - Create a new user
-router.post('/', (req, res) => {
-    const { username, password, role } = req.body;
-
-    if (!username || !password || !role) {
-        return res.status(400).json({ message: 'Missing required fields: username, password, role' });
+router.post('/', async (req, res) => {
+    const { username, password, role, departmentId } = req.body;
+    if (!username || !password || !role || !departmentId) {
+        return res.status(400).json({ message: 'Missing required fields: username, password, role, departmentId' });
     }
 
-    // Check if username already exists
-    if (users.some(u => u.username === username)) {
-        return res.status(409).json({ message: 'Username already exists' });
+    try {
+        const db = await openDb();
+        const result = await db.run(
+            'INSERT INTO users (username, password, role, departmentId) VALUES (?, ?, ?, ?)',
+            [username, password, role, departmentId]
+        );
+        res.status(201).json({ id: result.lastID, username, role, departmentId });
+    } catch (err) {
+        if (err.code === 'SQLITE_CONSTRAINT') {
+            return res.status(409).json({ message: 'Username already exists' });
+        }
+        res.status(500).json({ message: 'Failed to create user.' });
     }
-
-    const newUser = {
-        id: getNextUserId(),
-        username,
-        password, // In a real app, hash this password
-        role
-    };
-
-    users.push(newUser);
-
-    // Return the new user without the password
-    const { password: _, ...sanitizedUser } = newUser;
-    res.status(201).json(sanitizedUser);
 });
 
 // PUT /api/users/:id - Update a user
-router.put('/:id', (req, res) => {
-    const userId = parseInt(req.params.id, 10);
+router.put('/:id', async (req, res) => {
+    const { id } = req.params;
     const { username, role, departmentId, password } = req.body;
 
-    const user = users.find(u => u.id === userId);
+    try {
+        const db = await openDb();
+        // Build query dynamically based on whether password is being updated
+        let query = 'UPDATE users SET username = ?, role = ?, departmentId = ?';
+        let params = [username, role, departmentId];
 
-    if (!user) {
-        return res.status(404).json({ message: 'User not found' });
+        if (password) {
+            query += ', password = ?';
+            params.push(password);
+        }
+
+        query += ' WHERE id = ?';
+        params.push(id);
+
+        const result = await db.run(query, params);
+
+        if (result.changes === 0) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+        res.json({ id: parseInt(id), username, role, departmentId });
+    } catch (err) {
+        if (err.code === 'SQLITE_CONSTRAINT') {
+            return res.status(409).json({ message: 'Username already exists' });
+        }
+        res.status(500).json({ message: 'Failed to update user.' });
     }
-
-    // Update fields if they are provided
-    if (username) user.username = username;
-    if (role) user.role = role;
-    if (departmentId) user.departmentId = departmentId;
-    if (password) user.password = password; // Reset password. Again, hash in production.
-
-    const { password: __, ...sanitizedUser } = user;
-    res.json(sanitizedUser);
 });
 
 module.exports = router;

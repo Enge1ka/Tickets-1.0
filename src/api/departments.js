@@ -1,54 +1,62 @@
 const express = require('express');
 const router = express.Router();
-const { departments, getNextDepartmentId } = require('../database');
+const { openDb } = require('../database');
 const { hasRole } = require('../middleware/auth');
 
 // Protect all routes in this file - only admins can manage departments
 router.use(hasRole(['admin']));
 
 // GET /api/departments - Get all departments
-router.get('/', (req, res) => {
-    res.json(departments);
+router.get('/', async (req, res) => {
+    try {
+        const db = await openDb();
+        const departments = await db.all('SELECT * FROM departments ORDER BY name');
+        res.json(departments);
+    } catch (err) {
+        res.status(500).json({ message: 'Failed to retrieve departments.' });
+    }
 });
 
 // POST /api/departments - Create a new department
-router.post('/', (req, res) => {
+router.post('/', async (req, res) => {
     const { name } = req.body;
-
     if (!name) {
         return res.status(400).json({ message: 'Missing required field: name' });
     }
 
-    if (departments.some(d => d.name.toLowerCase() === name.toLowerCase())) {
-        return res.status(409).json({ message: 'Department name already exists' });
+    try {
+        const db = await openDb();
+        const result = await db.run('INSERT INTO departments (name) VALUES (?)', [name]);
+        res.status(201).json({ id: result.lastID, name });
+    } catch (err) {
+        if (err.code === 'SQLITE_CONSTRAINT') {
+            return res.status(409).json({ message: 'Department name already exists' });
+        }
+        res.status(500).json({ message: 'Failed to create department.' });
     }
-
-    const newDepartment = {
-        id: getNextDepartmentId(),
-        name
-    };
-
-    departments.push(newDepartment);
-    res.status(201).json(newDepartment);
 });
 
 // PUT /api/departments/:id - Update a department
-router.put('/:id', (req, res) => {
-    const departmentId = parseInt(req.params.id, 10);
+router.put('/:id', async (req, res) => {
+    const { id } = req.params;
     const { name } = req.body;
-
     if (!name) {
         return res.status(400).json({ message: 'Missing required field: name' });
     }
 
-    const department = departments.find(d => d.id === departmentId);
-
-    if (!department) {
-        return res.status(404).json({ message: 'Department not found' });
+    try {
+        const db = await openDb();
+        const result = await db.run('UPDATE departments SET name = ? WHERE id = ?', [name, id]);
+        if (result.changes === 0) {
+            return res.status(404).json({ message: 'Department not found' });
+        }
+        res.json({ id: parseInt(id), name });
+    } catch (err) {
+        if (err.code === 'SQLITE_CONSTRAINT') {
+            return res.status(409).json({ message: 'Department name already exists' });
+        }
+        res.status(500).json({ message: 'Failed to update department.' });
     }
-
-    department.name = name;
-    res.json(department);
 });
 
 module.exports = router;
