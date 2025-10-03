@@ -5,7 +5,13 @@
   "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js",
-    "dev": "nodemon src/index.js"
+    "dev": "nodemon src/index.js",
+    "build": "pkg . --output-path dist"
+  },
+  "pkg": {
+    "assets": [
+      "public/**/*"
+    ]
   },
   "keywords": [
     "ticketing",
@@ -24,6 +30,7 @@
     "sqlite3": "^5.1.7"
   },
   "devDependencies": {
-    "nodemon": "^2.0.22"
+    "nodemon": "^2.0.22",
+    "pkg": "^5.8.1"
   }
 }

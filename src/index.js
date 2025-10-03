@@ -25,7 +25,13 @@ app.use(session({
 
 
 // Serve static files from the 'public' directory
-app.use(express.static(path.join(__dirname, '..', 'public')));
+const isPkg = typeof process.pkg !== 'undefined';
+const publicPath = isPkg
+  ? path.join(path.dirname(process.execPath), 'public')
+  : path.join(__dirname, '..', 'public');
+
+app.use(express.static(publicPath));
+
 
 // API Routes
 const authRoutes = require('./api/auth');

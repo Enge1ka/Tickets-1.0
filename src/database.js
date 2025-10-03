@@ -1,10 +1,20 @@
 const sqlite3 = require('sqlite3');
 const { open } = require('sqlite');
+const path = require('path');
+
+// Determine the correct path for the database file.
+// In development, it will be in the project root.
+// In a packaged executable, it will be next to the .exe file.
+const isPkg = typeof process.pkg !== 'undefined';
+const dbPath = isPkg
+  ? path.join(path.dirname(process.execPath), 'database.db')
+  : path.join(__dirname, '..', 'database.db');
+
 
 // This function will open a connection to the database file.
 async function openDb() {
     return open({
-        filename: './database.db',
+        filename: dbPath,
         driver: sqlite3.Database
     });
 }
