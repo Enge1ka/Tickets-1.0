@@ -23,8 +23,7 @@ async function openDb() {
 async function initializeDatabase() {
     const db = await openDb();
 
-    // Use serialize to ensure statements run in order
-    await db.serialize(async () => {
+    try {
         // Create tables if they don't exist
         await db.exec(`
             CREATE TABLE IF NOT EXISTS departments (
@@ -85,10 +84,19 @@ async function initializeDatabase() {
             // Note: Passwords are in plaintext. In a real app, they should be hashed.
             await db.run("INSERT INTO users (username, password, role, departmentId) VALUES ('admin', 'password', 'admin', 1), ('tech', 'password', 'tech', 1), ('user', 'password', 'user', 2)");
         }
-    });
 
-    console.log('Database initialized successfully.');
+        console.log('Database initialized successfully.');
+    } catch (err) {
+        console.error('Database initialization error:', err);
+        throw err;
+    }
     // db.close(); // We might want to keep the connection open or manage it differently
 }
 
-module.exports = { openDb, initializeDatabase };
+// Define ticket statuses for use throughout the application
+const ticketStatuses = {
+    active: ['Open', 'In Progress', 'Awaiting User Response', 'Awaiting Parts', 'Pending Confirmation'],
+    closed: ['Resolved', 'Closed']
+};
+
+module.exports = { openDb, initializeDatabase, ticketStatuses };
