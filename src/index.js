@@ -52,6 +52,9 @@ app.use('/api/users', userRoutes);
 const departmentRoutes = require('./api/departments');
 app.use('/api/departments', departmentRoutes);
 
+const knowledgeBaseRoutes = require('./api/knowledge-base');
+app.use('/api/knowledge-base', knowledgeBaseRoutes);
+
 // Simple route to confirm the server is running
 app.get('/api', (req, res) => {
   res.json({ message: 'Welcome to the Ticketing & Requisition API!' });
