@@ -2,6 +2,19 @@ const sqlite3 = require('sqlite3');
 const { open } = require('sqlite');
 const path = require('path');
 
+// Centralized definition of ticket workflow statuses used across the app.
+// "closed" statuses are considered archived by the API.
+const ticketStatuses = {
+    open: [
+        'Open',
+        'In Progress',
+        'Awaiting User Response',
+        'Awaiting Parts',
+        'Pending Confirmation'
+    ],
+    closed: ['Resolved']
+};
+
 // Determine the correct path for the database file.
 // In development, it will be in the project root.
 // In a packaged executable, it will be next to the .exe file.
@@ -91,4 +104,4 @@ async function initializeDatabase() {
     // db.close(); // We might want to keep the connection open or manage it differently
 }
 
-module.exports = { openDb, initializeDatabase };
+module.exports = { openDb, initializeDatabase, ticketStatuses };
